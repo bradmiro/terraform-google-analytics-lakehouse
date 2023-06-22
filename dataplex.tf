@@ -37,22 +37,43 @@ resource "google_dataplex_lake" "gcp_primary" {
 }
 
 #zone
-resource "google_dataplex_zone" "gcp_primary_zone" {
+resource "google_dataplex_zone" "gcp_primary_raw_zone" {
   discovery_spec {
     enabled = true
   }
 
   lake     = google_dataplex_lake.gcp_primary.name
   location = var.region
-  name     = "gcp-primary-zone"
+  name     = "gcp-primary-raw-zone"
 
   resource_spec {
     location_type = "SINGLE_REGION"
   }
 
   type         = "RAW"
-  description  = "Zone for thelook_ecommerce"
-  display_name = "Zone 1"
+  description  = "Zone for thelook_ecommerce image data"
+  display_name = "images"
+  labels       = {}
+  project      = module.project-services.project_id
+  depends_on   = [time_sleep.wait_after_all_workflows]
+}
+
+resource "google_dataplex_zone" "gcp_primary_staging_zone" {
+  discovery_spec {
+    enabled = true
+  }
+
+  lake     = google_dataplex_lake.gcp_primary.name
+  location = var.region
+  name     = "gcp-primary-staging-zone"
+
+  resource_spec {
+    location_type = "SINGLE_REGION"
+  }
+
+  type         = "CURATED"
+  description  = "Zone for thelook_ecommerce tabular data"
+  display_name = "staging"
   labels       = {}
   project      = module.project-services.project_id
   depends_on   = [time_sleep.wait_after_all_workflows]
@@ -66,16 +87,43 @@ resource "google_project_iam_member" "dataplex_bucket_access" {
   depends_on = [time_sleep.wait_after_all_workflows]
 }
 
+## add new curated / gold zone for BQ tables to auto discover
+## upgrade to biglake tables automatically
+
 #asset
-resource "google_dataplex_asset" "gcp_primary_asset" {
+resource "google_dataplex_asset" "gcp_primary_raw_asset" {
   name     = "gcp-primary-asset"
   location = var.region
 
   lake          = google_dataplex_lake.gcp_primary.name
-  dataplex_zone = google_dataplex_zone.gcp_primary_zone.name
+  dataplex_zone = google_dataplex_zone.gcp_primary_raw_zone.name
 
   discovery_spec {
     enabled = true
+    include_patterns = "${google_storage_bucket.raw_bucket.name}/images/*"
+  }
+
+  resource_spec {
+    name = "projects/${module.project-services.project_id}/buckets/${google_storage_bucket.raw_bucket.name}"
+    type = "STORAGE_BUCKET"
+  }
+
+  project    = module.project-services.project_id
+  depends_on = [time_sleep.wait_after_all_workflows, google_project_iam_member.dataplex_bucket_access]
+
+}
+
+#asset
+resource "google_dataplex_asset" "gcp_primary_curated_asset" {
+  name     = "gcp-primary-asset"
+  location = var.region
+
+  lake          = google_dataplex_lake.gcp_primary.name
+  dataplex_zone = google_dataplex_zone.gcp_primary_curated_zone.name
+
+  discovery_spec {
+    enabled = true
+    include_patterns = "${google_storage_bucket.raw_bucket.name}/tables/*"
   }
 
   resource_spec {

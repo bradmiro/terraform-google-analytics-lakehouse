@@ -12,9 +12,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# This defines the Google Workflow for the Analytics lakehouse Soultion: https://console.cloud.google.com/products/solutions/details/analytics-lakehouse
+# This Workflow executes through Terraform. For Google Workflows executed via Terraform, variables are defined such that:
+#
+#     - Terraform environment variables are denoted by $
+#     - Google Workflow variables are escaped via $$
+#
+# To modify this Workflow to stand alone (no Terraform):
+#
+#     - Replace vars in `main` -> `steps` -> `assign` with your own (or use https://cloud.google.com/workflows/docs/passing-runtime-arguments#gcloud)
+#     - Change all $$ to $
+
 main:
     params: []
     steps:
+        - init:
+            # Define local variables from terraform env variables
+            assign:
+                - raw_bucket_name: ${raw_bucket}
+                - temp_bucket_name: ${temp_bucket}
+                - dataproc_service_account_name: ${dataproc_service_account}
+                - provisioner_bucket_name: ${provisioner_bucket}
         - sub_copy_objects:
             call: copy_objects
             result: output
@@ -28,13 +46,64 @@ main:
             call: create_taxonomy
             result: output3
 
+# Subworkflow to upgrade all Dataplex Assets to Managed
+# Subworkflow gets all lakes, then all zones within each lake, then all assets within each zone and upgrades
+upgrade_assets:
+    steps:
+        - init:
+            assign:
+                - zones: []
+        - get_zones:
+            call: http.get
+            args:
+                url: $${"https://dataplex.googleapis.com/v1/projects"+project_id+"/locations/"+location+"/lakes/"}
+            result: Response
+            for:
+                value: lake
+                index: i
+                in: $${lakes}
+                steps:
+                  call: http.get
+                  args:
+                      url: $${"https://dataplex.googleapis.com/v1/"+lake.name}
+                  result: Response
+                for:
+                    value: zone
+                    index: j
+                    in: $${Response.body.zones}
+                    steps:
+                      assign:
+                          - zones: $${list.concat(zones, zone.name)}
+        - get_and_upgrade_assets:
+            for:
+                value: zone
+                index: i
+                in: $${zones}
+                steps:
+                  call: http.get
+                  args:
+                      url: $${"https://dataplex.google.apis.com/v1/"+zone.name}
+                  result: Response
+                for:
+                    value: asset
+                    index: j
+                    in: $${Response.body.assets}
+                    steps:
+                      call: http.patch
+                      args:
+                          url: $${"https://dataplex.googleapis.com/v1/"+asset.name+"?updateMask=readAccessMode"}
+                          body:
+                              resourseSpec:
+                                  readAccessMode: "MANAGED"
+    
+
 # Subworkflow to copy initial objects
 copy_objects:
     steps:
         - init:
             assign:
                 - source_bucket: "data-analytics-demos"
-                - dest_bucket: ${raw_bucket}
+                - dest_bucket: $${raw_bucket_name}
                 - copied_objects: []
         - list_objects:
             call: googleapis.storage.v1.objects.list
@@ -78,43 +147,43 @@ copy_objects:
 # Subworkflow to create BigLake tables
 create_tables:
     steps:
-        - assignStepTables:
-            assign:
-                - results: {}
-                - location: $${sys.get_env("GOOGLE_CLOUD_LOCATION")}
-                - bucket: ${raw_bucket}
-                - project_id: $${sys.get_env("GOOGLE_CLOUD_PROJECT_ID")}
-                - map:
-                    gcp_tbl_order_items: $${"CREATE OR REPLACE EXTERNAL TABLE `gcp_lakehouse_ds.gcp_tbl_order_items` WITH CONNECTION `"+location+".gcp_lakehouse_connection` OPTIONS(format ='Parquet', uris = ['gs://" + bucket + "/thelook_ecommerce/order_items-0*.Parquet'], max_staleness = INTERVAL 30 MINUTE, metadata_cache_mode = 'AUTOMATIC');"}
-                    gcp_tbl_orders: $${"CREATE OR REPLACE EXTERNAL TABLE `gcp_lakehouse_ds.gcp_tbl_orders` WITH CONNECTION `"+location+".gcp_lakehouse_connection`     OPTIONS(format ='Parquet', uris = ['gs://" + bucket + "/thelook_ecommerce/orders-*.Parquet'], max_staleness = INTERVAL 30 MINUTE, metadata_cache_mode = 'AUTOMATIC');"}
-                    gcp_tbl_users: $${"CREATE OR REPLACE EXTERNAL TABLE `gcp_lakehouse_ds.gcp_tbl_users` WITH CONNECTION `"+location+".gcp_lakehouse_connection` OPTIONS(format ='Parquet', uris = ['gs://" + bucket + "/thelook_ecommerce/users-*.Parquet'], max_staleness = INTERVAL 30 MINUTE, metadata_cache_mode = 'AUTOMATIC');"}
-                    gcp_tbl_distribution_centers: $${"CREATE OR REPLACE EXTERNAL TABLE `gcp_lakehouse_ds.gcp_tbl_distribution_centers` WITH CONNECTION `"+location+".gcp_lakehouse_connection` OPTIONS(format ='Parquet', uris = ['gs://" + bucket + "/thelook_ecommerce/distribution_centers-*.Parquet'], max_staleness = INTERVAL 30 MINUTE, metadata_cache_mode = 'AUTOMATIC');"}
-                    gcp_tbl_inventory_items: $${"CREATE OR REPLACE EXTERNAL TABLE `gcp_lakehouse_ds.gcp_tbl_inventory_items` WITH CONNECTION `"+location+".gcp_lakehouse_connection` OPTIONS(format ='Parquet', uris = ['gs://" + bucket + "/thelook_ecommerce/inventory_items-*.Parquet'], max_staleness = INTERVAL 30 MINUTE, metadata_cache_mode = 'AUTOMATIC');"}
-                    gcp_tbl_products: $${"CREATE OR REPLACE EXTERNAL TABLE `gcp_lakehouse_ds.gcp_tbl_products` WITH CONNECTION `"+location+".gcp_lakehouse_connection` OPTIONS(format ='Parquet', uris = ['gs://" + bucket + "/thelook_ecommerce/products-0*.Parquet'], max_staleness = INTERVAL 30 MINUTE, metadata_cache_mode = 'AUTOMATIC');"}
-        - loopStepTables:
-            for:
-                value: key
-                in: $${keys(map)}
-                steps:
-                    - runQuery:
-                        call: googleapis.bigquery.v2.jobs.query
-                        args:
-                            projectId: $${sys.get_env("GOOGLE_CLOUD_PROJECT_ID")}
-                            body:
-                                useLegacySql: false
-                                useQueryCache: false
-                                location: $${sys.get_env("GOOGLE_CLOUD_LOCATION")}
-                                timeoutMs: 600000
-                                query: $${map[key]}
-                        result: queryResult
-                    - sumStep:
-                        assign:
-                            - results[key]: $${queryResult}
+        # - assignStepTables:
+        #     assign:
+        #         - results: {}
+        #         - location: $${sys.get_env("GOOGLE_CLOUD_LOCATION")}
+        #         - bucket: $${raw_bucket_name}
+        #         - project_id: $${sys.get_env("GOOGLE_CLOUD_PROJECT_ID")}
+        #         - map:
+        #             gcp_tbl_order_items: $${"CREATE OR REPLACE EXTERNAL TABLE `gcp_lakehouse_ds.gcp_tbl_order_items` WITH CONNECTION `"+location+".gcp_lakehouse_connection` OPTIONS(format ='Parquet', uris = ['gs://" + bucket + "/thelook_ecommerce/order_items-0*.Parquet'], max_staleness = INTERVAL 30 MINUTE, metadata_cache_mode = 'AUTOMATIC');"}
+        #             gcp_tbl_orders: $${"CREATE OR REPLACE EXTERNAL TABLE `gcp_lakehouse_ds.gcp_tbl_orders` WITH CONNECTION `"+location+".gcp_lakehouse_connection`     OPTIONS(format ='Parquet', uris = ['gs://" + bucket + "/thelook_ecommerce/orders-*.Parquet'], max_staleness = INTERVAL 30 MINUTE, metadata_cache_mode = 'AUTOMATIC');"}
+        #             gcp_tbl_users: $${"CREATE OR REPLACE EXTERNAL TABLE `gcp_lakehouse_ds.gcp_tbl_users` WITH CONNECTION `"+location+".gcp_lakehouse_connection` OPTIONS(format ='Parquet', uris = ['gs://" + bucket + "/thelook_ecommerce/users-*.Parquet'], max_staleness = INTERVAL 30 MINUTE, metadata_cache_mode = 'AUTOMATIC');"}
+        #             gcp_tbl_distribution_centers: $${"CREATE OR REPLACE EXTERNAL TABLE `gcp_lakehouse_ds.gcp_tbl_distribution_centers` WITH CONNECTION `"+location+".gcp_lakehouse_connection` OPTIONS(format ='Parquet', uris = ['gs://" + bucket + "/thelook_ecommerce/distribution_centers-*.Parquet'], max_staleness = INTERVAL 30 MINUTE, metadata_cache_mode = 'AUTOMATIC');"}
+        #             gcp_tbl_inventory_items: $${"CREATE OR REPLACE EXTERNAL TABLE `gcp_lakehouse_ds.gcp_tbl_inventory_items` WITH CONNECTION `"+location+".gcp_lakehouse_connection` OPTIONS(format ='Parquet', uris = ['gs://" + bucket + "/thelook_ecommerce/inventory_items-*.Parquet'], max_staleness = INTERVAL 30 MINUTE, metadata_cache_mode = 'AUTOMATIC');"}
+        #             gcp_tbl_products: $${"CREATE OR REPLACE EXTERNAL TABLE `gcp_lakehouse_ds.gcp_tbl_products` WITH CONNECTION `"+location+".gcp_lakehouse_connection` OPTIONS(format ='Parquet', uris = ['gs://" + bucket + "/thelook_ecommerce/products-0*.Parquet'], max_staleness = INTERVAL 30 MINUTE, metadata_cache_mode = 'AUTOMATIC');"}
+        # - loopStepTables:
+        #     for:
+        #         value: key
+        #         in: $${keys(map)}
+        #         steps:
+        #             - runQuery:
+        #                 call: googleapis.bigquery.v2.jobs.query
+        #                 args:
+        #                     projectId: $${sys.get_env("GOOGLE_CLOUD_PROJECT_ID")}
+        #                     body:
+        #                         useLegacySql: false
+        #                         useQueryCache: false
+        #                         location: $${sys.get_env("GOOGLE_CLOUD_LOCATION")}
+        #                         timeoutMs: 600000
+        #                         query: $${map[key]}
+        #                 result: queryResult
+        #             - sumStep:
+        #                 assign:
+        #                     - results[key]: $${queryResult}
         # Create and Assign Views
         - assignStepPolicies:
             assign:
-                - marketing_user: ${marketing_user}
-                - data_analyst_user: ${data_analyst_user}
+                # - marketing_user: ${marketing_user}
+                # - data_analyst_user: ${data_analyst_user}
                 - policy_map:
                     # row_policy_usa_filter: $${"CREATE OR REPLACE ROW ACCESS POLICY usa_filter ON `" + sys.get_env("GOOGLE_CLOUD_PROJECT_ID") + ".gcp_lakehouse_ds.gcp_tbl_users` GRANT TO ('serviceAccount:" + data_analyst_user + "')  FILTER USING (Country = 'United States')"}
                     # row_policy_product_category_filter: $${"CREATE OR REPLACE ROW ACCESS POLICY product_category_filter ON `" + sys.get_env("GOOGLE_CLOUD_PROJECT_ID") + ".gcp_lakehouse_ds.gcp_tbl_products` GRANT TO ('serviceAccount:" + marketing_user + "') FILTER USING (Category = 'Swim' or Category = 'Active' or Category = 'Fashion Hoodies & Sweatshirts')"}
@@ -150,10 +219,7 @@ create_iceberg:
             - location: $${sys.get_env("GOOGLE_CLOUD_LOCATION")}
             - connection_name: bq_spark_connection
             - batch_name: $${"initial-setup-"+text.substring(sys.get_env("GOOGLE_CLOUD_WORKFLOW_EXECUTION_ID"),0,7)}
-            - dataproc_service_account: ${dataproc_service_account}
-            - provisioner_bucket_name: ${provisioner_bucket}
             - warehouse_bucket_name: "gs://${warehouse_bucket}/warehouse"
-            - temp_bucket_name: ${temp_bucket}
             - lakehouse_catalog: lakehouse_catalog
             - lakehouse_database: lakehouse_database
             - bq_dataset: gcp_lakehouse_ds
@@ -188,7 +254,7 @@ create_iceberg:
 
                 environmentConfig:
                     executionConfig:
-                        serviceAccount: $${dataproc_service_account}
+                        serviceAccount: $${dataproc_service_account_name}
                         subnetworkUri: "dataproc-subnet"
             query:
                 batchId: $${batch_name}
