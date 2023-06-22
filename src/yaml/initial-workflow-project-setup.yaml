@@ -102,7 +102,7 @@ copy_objects:
     steps:
         - init:
             assign:
-                - source_bucket: "data-analytics-demos"
+                - source_bucket: "data-analytics-demos-stage"
                 - dest_bucket: $${raw_bucket_name}
                 - copied_objects: []
         - list_objects:

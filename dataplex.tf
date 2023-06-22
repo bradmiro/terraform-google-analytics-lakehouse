@@ -100,7 +100,7 @@ resource "google_dataplex_asset" "gcp_primary_raw_asset" {
 
   discovery_spec {
     enabled = true
-    include_patterns = "${google_storage_bucket.raw_bucket.name}/images/*"
+    include_patterns = ["${google_storage_bucket.raw_bucket.name}/images/*"]
   }
 
   resource_spec {
@@ -123,7 +123,7 @@ resource "google_dataplex_asset" "gcp_primary_curated_asset" {
 
   discovery_spec {
     enabled = true
-    include_patterns = "${google_storage_bucket.raw_bucket.name}/tables/*"
+    include_patterns = ["${google_storage_bucket.raw_bucket.name}/tables/*"]
   }
 
   resource_spec {
