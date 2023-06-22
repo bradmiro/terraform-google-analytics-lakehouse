@@ -53,48 +53,54 @@ upgrade_assets:
         - init:
             assign:
                 - zones: []
-        - get_zones:
+        - get_lakes:
             call: http.get
             args:
                 url: $${"https://dataplex.googleapis.com/v1/projects"+project_id+"/locations/"+location+"/lakes/"}
             result: Response
+        - get_zones:
             for:
                 value: lake
                 index: i
                 in: $${lakes}
                 steps:
-                  call: http.get
-                  args:
-                      url: $${"https://dataplex.googleapis.com/v1/"+lake.name}
-                  result: Response
-                for:
-                    value: zone
-                    index: j
-                    in: $${Response.body.zones}
-                    steps:
-                      assign:
-                          - zones: $${list.concat(zones, zone.name)}
-        - get_and_upgrade_assets:
+                  - get_zones_in_lake:
+                      call: http.get
+                      args:
+                          url: $${"https://dataplex.googleapis.com/v1/"+lake.name}
+                      result: Response
+                  - save_zones:
+                        for:
+                          value: zone
+                          index: j
+                          in: $${Response.body.zones}
+                          steps:
+                              assign:
+                                - zones: $${list.concat(zones, zone.name)}
+        - get_and_upgrade_all_assets:
             for:
                 value: zone
                 index: i
                 in: $${zones}
                 steps:
-                  call: http.get
-                  args:
-                      url: $${"https://dataplex.google.apis.com/v1/"+zone.name}
-                  result: Response
-                for:
-                    value: asset
-                    index: j
-                    in: $${Response.body.assets}
-                    steps:
-                      call: http.patch
+                  - get_assets_in_zone:
+                      call: http.get
                       args:
-                          url: $${"https://dataplex.googleapis.com/v1/"+asset.name+"?updateMask=readAccessMode"}
-                          body:
-                              resourseSpec:
-                                  readAccessMode: "MANAGED"
+                          url: $${"https://dataplex.google.apis.com/v1/"+zone.name}
+                      result: Response
+                  - upgrade_all_assets:
+                        for:
+                            value: asset
+                            index: j
+                            in: $${Response.body.assets}
+                            steps:
+                              - upgrade_asset:
+                                  call: http.patch
+                                  args:
+                                      url: $${"https://dataplex.googleapis.com/v1/"+asset.name+"?updateMask=readAccessMode"}
+                                  body:
+                                      resourseSpec:
+                                          readAccessMode: "MANAGED"
     
 
 # Subworkflow to copy initial objects
