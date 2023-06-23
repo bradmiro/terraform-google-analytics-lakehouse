@@ -99,9 +99,9 @@ upgrade_assets:
                                   call: http.patch
                                   args:
                                       url: $${"https://dataplex.googleapis.com/v1/"+asset.name+"?updateMask=readAccessMode"}
-                                  body:
-                                      resourseSpec:
-                                          readAccessMode: "MANAGED"
+                                      body:
+                                          resourseSpec:
+                                              readAccessMode: "MANAGED"
     
 
 # Subworkflow to copy initial objects
