@@ -231,7 +231,7 @@ create_tables:
 
 # Subworkflow to create BLMS and Iceberg tables
 create_iceberg:
-    params: [temp_bucket_name, provisioner_bucket_name, dataproc_service_account]
+    params: [temp_bucket_name, provisioner_bucket_name, dataproc_service_account_name]
     steps:
     - assign_values:
         assign:
