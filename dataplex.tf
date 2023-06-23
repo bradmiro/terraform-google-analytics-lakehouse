@@ -66,7 +66,7 @@ resource "google_dataplex_zone" "gcp_primary_curated_staging_zone" {
 
   lake     = google_dataplex_lake.gcp_primary.name
   location = var.region
-  name     = "gcp-primary-staging-zone"
+  name     = "gcp-primary-curated-staging-zone"
 
   resource_spec {
     location_type = "SINGLE_REGION"
