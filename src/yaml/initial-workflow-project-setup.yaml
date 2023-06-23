@@ -33,18 +33,27 @@ main:
                 - temp_bucket_name: ${temp_bucket}
                 - dataproc_service_account_name: ${dataproc_service_account}
                 - provisioner_bucket_name: ${provisioner_bucket}
+        - sub_upgrade_assets:
+            call: upgrade_assets
+            result: output0
         - sub_copy_objects:
             call: copy_objects
-            result: output
+            args:
+                raw_bucket_name: $${raw_bucket_name}
+            result: output1
         - sub_create_tables:
             call: create_tables
-            result: output1
+            result: output2
         - sub_create_iceberg:
             call: create_iceberg
-            result: output2
+            args:
+                temp_bucket_name: $${temp_bucket_name}
+                dataproc_service_account_name: $${dataproc_service_account}
+                provisioner_bucket_name: $${provisioner_bucket_name}
+            result: output3
         - sub_create_taxonomy:
             call: create_taxonomy
-            result: output3
+            result: output4
 
 # Subworkflow to upgrade all Dataplex Assets to Managed
 # Subworkflow gets all lakes, then all zones within each lake, then all assets within each zone and upgrades
@@ -108,11 +117,12 @@ upgrade_assets:
 
 # Subworkflow to copy initial objects
 copy_objects:
+    params: [raw_bucket_name]
     steps:
         - init:
             assign:
                 - source_bucket: "data-analytics-demos-stage"
-                - dest_bucket: $${raw_bucket_name}
+                - dest_bucket: raw_bucket_name
                 - copied_objects: []
         - list_objects:
             call: googleapis.storage.v1.objects.list
@@ -221,6 +231,7 @@ create_tables:
 
 # Subworkflow to create BLMS and Iceberg tables
 create_iceberg:
+    params: [temp_bucket_name, provisioner_bucket_name, dataproc_service_account]
     steps:
     - assign_values:
         assign:
@@ -257,13 +268,13 @@ create_iceberg:
                         "spark.jars.packages": "org.apache.iceberg:iceberg-spark-runtime-3.2_2.12:0.14.1"
                         "spark.dataproc.driverEnv.lakehouse_catalog": $${lakehouse_catalog}
                         "spark.dataproc.driverEnv.lakehouse_database": $${lakehouse_database}
-                        "spark.dataproc.driverEnv.temp_bucket": $${temp_bucket_name}
+                        "spark.dataproc.driverEnv.temp_bucket": temp_bucket_name
                         "spark.dataproc.driverEnv.bq_dataset": $${bq_dataset}
                         "spark.dataproc.driverEnv.bq_gcs_connection": $${bq_gcs_connection}
 
                 environmentConfig:
                     executionConfig:
-                        serviceAccount: $${dataproc_service_account_name}
+                        serviceAccount: dataproc_service_account_name
                         subnetworkUri: "dataproc-subnet"
             query:
                 batchId: $${batch_name}
