@@ -201,6 +201,7 @@ create_tables:
         # Create and Assign Views
         - assignStepPolicies:
             assign:
+                - results: {}
                 # - marketing_user: ${marketing_user}
                 # - data_analyst_user: ${data_analyst_user}
                 - policy_map:
