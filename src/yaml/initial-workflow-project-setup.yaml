@@ -64,7 +64,7 @@ upgrade_assets:
             for:
                 value: lake
                 index: i
-                in: $${lakes}
+                in: $${Response.body.lakes}
                 steps:
                   - get_zones_in_lake:
                       call: http.get
