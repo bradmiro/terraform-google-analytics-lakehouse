@@ -48,7 +48,7 @@ main:
             call: create_iceberg
             args:
                 temp_bucket_name: $${temp_bucket_name}
-                dataproc_service_account_name: $${dataproc_service_account}
+                dataproc_service_account_name: $${dataproc_service_account_name}
                 provisioner_bucket_name: $${provisioner_bucket_name}
             result: output3
         - sub_create_taxonomy:
