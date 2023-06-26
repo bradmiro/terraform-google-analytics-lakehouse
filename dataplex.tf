@@ -120,11 +120,10 @@ resource "google_dataplex_asset" "gcp_primary_raw_asset" {
 
   discovery_spec {
     enabled = true
-    include_patterns = ["${google_storage_bucket.raw_bucket.name}/images/*"]
   }
 
   resource_spec {
-    name = "projects/${module.project-services.project_id}/buckets/${google_storage_bucket.raw_bucket.name}"
+    name = "projects/${module.project-services.project_id}/buckets/${google_storage_bucket.images_bucket.name}"
     type = "STORAGE_BUCKET"
   }
 
@@ -143,11 +142,10 @@ resource "google_dataplex_asset" "gcp_primary_staging_asset" {
 
   discovery_spec {
     enabled = true
-    include_patterns = ["${google_storage_bucket.raw_bucket.name}/tables/*"]
   }
 
   resource_spec {
-    name = "projects/${module.project-services.project_id}/buckets/${google_storage_bucket.raw_bucket.name}"
+    name = "projects/${module.project-services.project_id}/buckets/${google_storage_bucket.tables_bucket.name}"
     type = "STORAGE_BUCKET"
   }
 

@@ -120,6 +120,21 @@ resource "google_storage_bucket" "provisioning_bucket" {
 
 }
 
+resource "google_storage_bucket" "images_bucket" {
+  name                        = "gcp-${var.use_case_short}-images-${random_id.id.hex}"
+  project                     = module.project-services.project_id
+  location                    = var.region
+  uniform_bucket_level_access = true
+  force_destroy               = var.force_destroy
+}
+
+resource "google_storage_bucket" "tables_bucket" {
+  name                        = "gcp-${var.use_case_short}-tables-${random_id.id.hex}"
+  project                     = module.project-services.project_id
+  location                    = var.region
+  uniform_bucket_level_access = true
+  force_destroy               = var.force_destroy
+}
 
 resource "google_storage_bucket_object" "pyspark_file" {
   bucket = google_storage_bucket.provisioning_bucket.name
