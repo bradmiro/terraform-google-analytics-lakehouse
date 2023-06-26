@@ -165,7 +165,7 @@ copy_objects:
                                     exception: $${e}
                                     sourceBucket: source_bucket_name
                                     sourceObject: $${object.name}
-                                    destinationBucket: $${dest_bucket}
+                                    destinationBucket: dest_bucket_bucket
         - finish:
             return: $${copied_objects + " objects copied"}
 
