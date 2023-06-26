@@ -129,6 +129,7 @@ upgrade_assets:
 # Subworkflow to copy initial objects
 copy_objects:
     params: [prefix, source_bucket_name, dest_bucket_name]
+    steps:
         - list_objects:
             call: googleapis.storage.v1.objects.list
             args:
@@ -138,35 +139,35 @@ copy_objects:
         - start_counter:
             assign:
                 - copied_objects: 0
-    - copy_objects:
-            for:
-                value: object
-                index: i
-                in: $${list_result.items}
-                steps:
-                    - step1:
-                        try:
-                            steps:
-                                - copy_object:
-                                    call: googleapis.storage.v1.objects.copy
-                                    args:
-                                        sourceBucket: source_bucket_name
-                                        sourceObject: $${text.url_encode(object.name)}
-                                        destinationBucket: dest_bucket_name
-                                        destinationObject: $${text.url_encode(object.name)}
-                                    result: copy_result
-                                - save_result:
-                                    assign:
-                                        - copied_objects: $${copied_objects + 1}
-                        except:
-                            as: e
-                            raise:
-                                exception: $${e}
-                                sourceBucket: source_bucket_name
-                                sourceObject: $${object.name}
-                                destinationBucket: $${dest_bucket}
-        - finish:
-            return: $${copied_objects + " objects copied"}
+        - copy_objects:
+                for:
+                    value: object
+                    index: i
+                    in: $${list_result.items}
+                    steps:
+                        - step1:
+                            try:
+                                steps:
+                                    - copy_object:
+                                        call: googleapis.storage.v1.objects.copy
+                                        args:
+                                            sourceBucket: source_bucket_name
+                                            sourceObject: $${text.url_encode(object.name)}
+                                            destinationBucket: dest_bucket_name
+                                            destinationObject: $${text.url_encode(object.name)}
+                                        result: copy_result
+                                    - save_result:
+                                        assign:
+                                            - copied_objects: $${copied_objects + 1}
+                            except:
+                                as: e
+                                raise:
+                                    exception: $${e}
+                                    sourceBucket: source_bucket_name
+                                    sourceObject: $${object.name}
+                                    destinationBucket: $${dest_bucket}
+            - finish:
+                return: $${copied_objects + " objects copied"}
 
 # Subworkflow to create BigLake tables
 create_:
