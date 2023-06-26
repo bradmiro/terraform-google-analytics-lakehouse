@@ -96,7 +96,7 @@ resource "google_dataplex_zone" "gcp_primary_curated_bi_zone" {
 
   type         = "CURATED"
   description  = "Zone for thelook_ecommerce tabular data"
-  display_name = "staging"
+  display_name = "business_intelligence"
   labels       = {}
   project      = module.project-services.project_id
   depends_on   = [time_sleep.wait_after_all_workflows]
