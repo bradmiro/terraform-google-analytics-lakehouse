@@ -145,7 +145,7 @@ copy_objects:
                     index: i
                     in: $${list_result.items}
                     steps:
-                        - step1:
+                        - copy:
                             try:
                                 steps:
                                     - copy_object:
@@ -166,8 +166,8 @@ copy_objects:
                                     sourceBucket: source_bucket_name
                                     sourceObject: $${object.name}
                                     destinationBucket: $${dest_bucket}
-            - finish:
-                return: $${copied_objects + " objects copied"}
+        - finish:
+            return: $${copied_objects + " objects copied"}
 
 # Subworkflow to create BigLake tables
 create_:
