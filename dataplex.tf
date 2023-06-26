@@ -112,7 +112,7 @@ resource "google_project_iam_member" "dataplex_bucket_access" {
 
 #asset
 resource "google_dataplex_asset" "gcp_primary_raw_asset" {
-  name     = "gcp-primary-asset"
+  name     = "gcp-primary-raw-asset"
   location = var.region
 
   lake          = google_dataplex_lake.gcp_primary.name
@@ -135,7 +135,7 @@ resource "google_dataplex_asset" "gcp_primary_raw_asset" {
 
 #asset
 resource "google_dataplex_asset" "gcp_primary_staging_asset" {
-  name     = "gcp-primary-asset"
+  name     = "gcp-primary-staging-asset"
   location = var.region
 
   lake          = google_dataplex_lake.gcp_primary.name
