@@ -124,7 +124,7 @@ upgrade_assets:
                       result: Response
                   - check_for_assets:
                       switch:
-                        - condition: ${not("assets"in Response.body)}
+                        - condition: ${not("assets" in Response.body)}
                           next: continue
                   - assign_assets:
                       assign:
