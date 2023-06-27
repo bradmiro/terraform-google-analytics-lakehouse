@@ -138,7 +138,7 @@ resource "google_dataplex_asset" "gcp_primary_staging_asset" {
   location = var.region
 
   lake          = google_dataplex_lake.gcp_primary.name
-  dataplex_zone = google_dataplex_zone.gcp_primary_curated_staging_zone.name
+  dataplex_zone = google_dataplex_zone.gcp_primary_staging_zone.name
 
   discovery_spec {
     enabled = true
