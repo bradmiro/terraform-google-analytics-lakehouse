@@ -132,8 +132,6 @@ upgrade_assets:
                       assign:
                           - response_assets: $${Response.body.assets}
                   - upgrade_all_assets:
-                        assign:
-                            - response_assets: $${Response.body.assets}
                         for:
                             value: asset
                             index: j
