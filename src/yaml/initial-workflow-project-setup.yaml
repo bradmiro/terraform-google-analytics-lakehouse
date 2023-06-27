@@ -81,7 +81,7 @@ upgrade_assets:
                 url: $${"https://dataplex.googleapis.com/v1/projects/"+project_id+"/locations/"+location+"/lakes"}
                 auth:
                     type: OAuth2
-            result: Respons
+            result: Response
         - assign_lakes:
             assign:
                 - response_lakes: $${Response.body.lakes}
