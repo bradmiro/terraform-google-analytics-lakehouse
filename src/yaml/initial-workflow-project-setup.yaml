@@ -140,7 +140,7 @@ upgrade_assets:
                               - upgrade_asset:
                                   call: http.patch
                                   args:
-                                      url: $${"https://dataplex.googleapis.com/v1/"+asset.name+"?updateMask=resourseSpec.readAccessMode"}
+                                      url: $${"https://dataplex.googleapis.com/v1/"+asset.name+"?updateMask=resourceSpec.readAccessMode"}
                                       auth:
                                           type: OAuth2
                                       body:
