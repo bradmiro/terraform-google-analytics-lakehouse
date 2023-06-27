@@ -98,9 +98,11 @@ upgrade_assets:
                           auth:
                               type: OAuth2
                       result: Response
+                  - assign_zones: 
+                      assign:
+                          - response_zones: $${Response.body.zones}
+                  
                   - save_zones:
-                        assign:
-                            - response_zones: $${Response.body.zones}
                         for:
                           value: zone
                           index: j
