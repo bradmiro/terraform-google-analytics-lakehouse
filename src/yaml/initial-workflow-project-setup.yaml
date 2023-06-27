@@ -178,7 +178,7 @@ copy_objects:
                                                 sourceBucket: source_bucket_name
                                                 sourceObject: $${text.url_encode(object.name)}
                                                 destinationBucket: dest_bucket_name
-                                                destinationObject: $${text.url_encode(text.replace_all_regex(object.name, "^"+prefix+"\/", "")}
+                                                destinationObject: $${text.url_encode(text.replace_all_regex(object.name, "^"+prefix+"\\\\/", "")}
                                             result: copy_result
                                         - save_result:
                                             assign:
