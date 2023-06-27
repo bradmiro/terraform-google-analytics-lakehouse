@@ -174,7 +174,6 @@ data "http" "call_workflows_initial_project_setup" {
     Accept = "application/json"
   Authorization = "Bearer ${data.google_client_config.current.access_token}" }
   depends_on = [
-    time_sleep.wait_after_all_resources,
     google_dataplex_lake.gcp_primary,
   ]
 }
